@@ -360,6 +360,7 @@ const DEFAULT_CONFIG: &str = r##"# herdr configuration
 # row_gap = 0
 # rows = [["state_icon", "workspace"], ["branch", "git_status"]]
 # Nest linked worktree spaces under their repository's space. Set to false to list every space on its own.
+# Client-owned: it applies to every machine this client shows.
 # group_worktrees = true
 
 # Background notification popup delivery

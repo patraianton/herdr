@@ -86,6 +86,15 @@ impl ClientShellState {
                 if !self.sidebar_width_manual {
                     self.sidebar_width = self.config.sidebar_width;
                 }
+                let group_worktrees = self.config.spaces.group_worktrees;
+                for endpoint in &mut self.endpoints {
+                    if let Some(snapshot) = endpoint.snapshot.as_deref_mut() {
+                        snapshot.group_worktrees = group_worktrees;
+                    }
+                }
+                if let Some(snapshot) = self.snapshot.as_deref_mut() {
+                    snapshot.group_worktrees = group_worktrees;
+                }
                 if self.agent_panel_sort_manual {
                     self.config.agent_panel_sort = agent_panel_sort;
                 }

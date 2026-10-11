@@ -961,9 +961,10 @@ pub struct ClientShellSnapshot {
     pub integration_updates_available: bool,
     /// Endpoint-owned base directory used for new linked worktree checkouts.
     pub worktree_directory: String,
-    /// Endpoint-owned `ui.sidebar.spaces.group_worktrees`: draw linked worktree
-    /// Spaces nested under their repository's Space.
-    #[serde(default = "default_group_worktrees")]
+    /// Client-owned `ui.sidebar.spaces.group_worktrees`: draw linked worktree
+    /// Spaces nested under their repository's Space. Not sent over the wire;
+    /// the client sets it from its own config when it caches a snapshot.
+    #[serde(skip, default = "default_group_worktrees")]
     pub group_worktrees: bool,
     /// Cached endpoint-owned notes used by the client-rendered overlay.
     pub release_notes: Option<ClientShellReleaseNotes>,
