@@ -3,7 +3,16 @@ use super::*;
 pub(super) fn merged_config_diagnostic(
     local: Option<&str>,
     endpoint: Option<&str>,
+    endpoint_is_local: bool,
 ) -> Option<String> {
+    // A local endpoint reads the same config file. When this client reads it
+    // cleanly, "unknown keys" from the endpoint only means the endpoint is an
+    // older build that does not know a newer key yet, such as a client-owned one.
+    let endpoint = endpoint.filter(|endpoint| {
+        !(endpoint_is_local
+            && local.is_none()
+            && endpoint.ends_with(" has unknown keys; herdr config check"))
+    });
     match (local, endpoint) {
         (Some(local), Some(endpoint)) if local == endpoint => {
             Some(format!("client + endpoint: {local}"))
@@ -23,6 +32,7 @@ impl ClientShellState {
             self.snapshot
                 .as_deref()
                 .and_then(|snapshot| snapshot.config_diagnostic.as_deref()),
+            self.active_endpoint_id == ClientEndpointId::Local,
         );
     }
 
@@ -545,6 +555,30 @@ mod tests {
         assert_eq!(
             shell.keybinds.prefix,
             vec![(KeyCode::Char('x'), KeyModifiers::CONTROL)]
+        );
+    }
+}
+
+#[cfg(test)]
+mod endpoint_diagnostic_tests {
+    use super::merged_config_diagnostic;
+
+    #[test]
+    fn unknown_keys_from_an_older_local_endpoint_are_hidden_when_the_client_reads_cleanly() {
+        let unknown = "config.toml has unknown keys; herdr config check";
+        assert_eq!(merged_config_diagnostic(None, Some(unknown), true), None);
+        assert_eq!(
+            merged_config_diagnostic(None, Some(unknown), false).as_deref(),
+            Some(unknown)
+        );
+        assert_eq!(
+            merged_config_diagnostic(Some(unknown), Some(unknown), true).as_deref(),
+            Some("client + endpoint: config.toml has unknown keys; herdr config check")
+        );
+        let invalid = "config.toml invalid; using defaults; herdr config check";
+        assert_eq!(
+            merged_config_diagnostic(None, Some(invalid), true).as_deref(),
+            Some(invalid)
         );
     }
 }
