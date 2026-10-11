@@ -283,6 +283,7 @@ rows = [[{ token = "workspace", rules = [{ equals = "long-workspace-name", fg = 
                 theme,
                 &super::super::Palette::catppuccin(),
                 width,
+                false,
             );
             assert_eq!(spans.len(), 1);
             assert!(super::super::display_width(&spans[0].content) <= width);
@@ -296,6 +297,34 @@ rows = [[{ token = "workspace", rules = [{ equals = "long-workspace-name", fg = 
                 .sub_modifier
                 .contains(Modifier::BOLD | Modifier::DIM));
         }
+    }
+
+    #[test]
+    fn space_name_keeps_its_width_before_other_tokens_share_the_rest() {
+        use ratatui::style::Style;
+        let row = vec![
+            ResolvedToken::unstyled(ResolvedTokenKind::Workspace("awsome-motive".into())),
+            ResolvedToken::unstyled(ResolvedTokenKind::Custom("⎇ job-hunting".into())),
+        ];
+        let text = |workspace_first: bool| {
+            super::super::resolved_token_spans(
+                &row,
+                ("*", Style::default()),
+                Style::default(),
+                Style::default(),
+                Style::default(),
+                Style::default(),
+                &super::super::Palette::catppuccin(),
+                20,
+                workspace_first,
+            )
+            .iter()
+            .map(|span| span.content.to_string())
+            .collect::<String>()
+        };
+        assert_eq!(text(true), "awsome-motive · ⎇ j…");
+        assert!(!text(false).starts_with("awsome-motive"));
+        assert!(super::super::display_width(&text(true)) <= 20);
     }
 
     #[test]

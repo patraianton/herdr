@@ -112,6 +112,7 @@ pub(crate) fn resolved_token_spans(
     custom_style: Style,
     palette: &Palette,
     max_width: usize,
+    workspace_first: bool,
 ) -> Vec<Span<'static>> {
     let fixed_widths = resolved
         .iter()
@@ -195,6 +196,19 @@ pub(crate) fn resolved_token_spans(
     let mut remaining = max_width
         .saturating_sub(separator_width + fixed_width)
         .saturating_sub(minimum);
+    // Space rows: the Space name keeps its full width before the other
+    // flexible tokens share what is left.
+    if workspace_first {
+        for (index, token) in resolved.iter().enumerate() {
+            if budgets[index] > 0 && matches!(token.kind, ResolvedTokenKind::Workspace(_)) {
+                let grow = flexible_widths[index]
+                    .saturating_sub(budgets[index])
+                    .min(remaining);
+                budgets[index] += grow;
+                remaining -= grow;
+            }
+        }
+    }
     while remaining > 0 {
         let mut grew = false;
         for (budget, width) in budgets.iter_mut().zip(&flexible_widths) {
