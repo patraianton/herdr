@@ -19,6 +19,7 @@ pub(super) fn snapshot() -> ClientShellSnapshot {
         latest_release_notes_available: false,
         integration_updates_available: false,
         worktree_directory: "/tmp/herdr-worktrees".into(),
+        group_worktrees: true,
         release_notes: None,
         focused_workspace_id: Some("ws_1".into()),
         focused_tab_id: Some("tab_1".into()),
