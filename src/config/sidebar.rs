@@ -461,6 +461,9 @@ pub struct SpacesSidebarConfig {
     #[serde(deserialize_with = "deserialize_sidebar_rows")]
     pub rows: SpaceSidebarRows,
     pub row_gap: u16,
+    /// Draw linked worktree Spaces nested under their repository's Space.
+    /// `false` gives every Space its own top-level entry in the sidebar order.
+    pub group_worktrees: bool,
 }
 
 impl Default for SpacesSidebarConfig {
@@ -471,6 +474,7 @@ impl Default for SpacesSidebarConfig {
                 vec![SpaceSidebarToken::Branch, SpaceSidebarToken::GitStatus],
             ],
             row_gap: DEFAULT_SIDEBAR_ROW_GAP,
+            group_worktrees: true,
         }
     }
 }
@@ -511,6 +515,20 @@ mod tests {
             ]
         );
         assert_eq!(config.spaces.row_gap, 0);
+        assert!(config.spaces.group_worktrees);
+    }
+
+    #[test]
+    fn parses_group_worktrees_switch() {
+        let config: crate::config::Config =
+            toml::from_str("[ui.sidebar.spaces]
+group_worktrees = false
+").unwrap();
+        assert!(!config.ui.sidebar.spaces.group_worktrees);
+        assert_eq!(
+            config.ui.sidebar.spaces.rows,
+            SpacesSidebarConfig::default().rows
+        );
     }
 
     #[test]

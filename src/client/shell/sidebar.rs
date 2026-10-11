@@ -459,6 +459,15 @@ pub(crate) fn workspace_entries(
     snapshot: &ClientShellSnapshot,
     collapsed_groups: &HashSet<String>,
 ) -> Vec<WorkspaceEntry> {
+    if !snapshot.group_worktrees {
+        return (0..snapshot.workspaces.len())
+            .map(|index| WorkspaceEntry {
+                index,
+                indented: false,
+                last_child: false,
+            })
+            .collect();
+    }
     let mut members = HashMap::<&str, Vec<usize>>::new();
     for (index, workspace) in snapshot.workspaces.iter().enumerate() {
         if let Some(worktree) = &workspace.worktree {
@@ -545,6 +554,9 @@ pub(crate) fn workspace_entries(
 }
 
 fn parent_group_key(snapshot: &ClientShellSnapshot, index: usize) -> Option<String> {
+    if !snapshot.group_worktrees {
+        return None;
+    }
     let workspace = snapshot.workspaces.get(index)?;
     let worktree = workspace.worktree.as_ref()?;
     if worktree.is_linked_worktree {

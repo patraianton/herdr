@@ -934,6 +934,10 @@ where
     })
 }
 
+fn default_group_worktrees() -> bool {
+    true
+}
+
 /// Initial resource projection used by the stable client-owned shell.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientShellSnapshot {
@@ -957,6 +961,10 @@ pub struct ClientShellSnapshot {
     pub integration_updates_available: bool,
     /// Endpoint-owned base directory used for new linked worktree checkouts.
     pub worktree_directory: String,
+    /// Endpoint-owned `ui.sidebar.spaces.group_worktrees`: draw linked worktree
+    /// Spaces nested under their repository's Space.
+    #[serde(default = "default_group_worktrees")]
+    pub group_worktrees: bool,
     /// Cached endpoint-owned notes used by the client-rendered overlay.
     pub release_notes: Option<ClientShellReleaseNotes>,
     pub focused_workspace_id: Option<String>,
@@ -2832,6 +2840,7 @@ mod tests {
             latest_release_notes_available: true,
             integration_updates_available: true,
             worktree_directory: "/tmp/herdr-worktrees".into(),
+            group_worktrees: true,
             release_notes: Some(ClientShellReleaseNotes {
                 version: "0.8.3".into(),
                 body: "### New\n- Update ready".into(),
