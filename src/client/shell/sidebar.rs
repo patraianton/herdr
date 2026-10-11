@@ -677,6 +677,7 @@ pub(in crate::client::shell) fn render_workspace_rows(
     dragged: bool,
     palette: &Palette,
 ) {
+    let main = name_row(&rows);
     for (row_index, row) in rows.iter().enumerate() {
         let y = area.y + row_index as u16;
         if y >= area.bottom() {
@@ -684,12 +685,14 @@ pub(in crate::client::shell) fn render_workspace_rows(
         }
         let mut x = area.x;
         if entry.indented {
-            let prefix = if row_index == 0 {
+            let prefix = if row_index == main {
                 if entry.last_child {
                     "   └─ "
                 } else {
                     "   ├─ "
                 }
+            } else if row_index < main {
+                "      "
             } else if entry.last_child {
                 "        "
             } else {
@@ -703,7 +706,7 @@ pub(in crate::client::shell) fn render_workspace_rows(
                 prefix,
                 Style::default().fg(palette.overlay0),
             );
-        } else if row_index == 0 {
+        } else if row_index <= main {
             x = x.saturating_add(1);
         } else {
             x = x.saturating_add(3);
@@ -755,10 +758,46 @@ pub(in crate::client::shell) fn render_workspace_rows(
         None
     };
     if let Some(background) = background {
-        for y in area.y..area.bottom() {
+        for y in area.y.saturating_add(main as u16)..area.bottom() {
             for x in area.x..area.right() {
                 buffer[(x, y)].set_bg(background);
             }
         }
+    }
+}
+
+/// The row with the Space name (or its state icon). Rows above it, such as a
+/// title drawn from a custom token, start at the left edge like the name row
+/// and stay out of the entry's highlight; rows below it are indented details.
+fn name_row(rows: &[Vec<crate::ui::ResolvedToken>]) -> usize {
+    use crate::ui::ResolvedTokenKind::{StateIcon, Workspace};
+    rows.iter()
+        .position(|row| row.iter().any(|token| matches!(token.kind, Workspace(_) | StateIcon)))
+        .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod name_row_tests {
+    use super::name_row;
+    use crate::ui::{ResolvedToken, ResolvedTokenKind};
+
+    fn token(kind: ResolvedTokenKind) -> ResolvedToken {
+        ResolvedToken {
+            kind,
+            style: Default::default(),
+        }
+    }
+
+    #[test]
+    fn a_title_row_above_the_name_does_not_push_the_name_in() {
+        let title = vec![token(ResolvedTokenKind::Custom("━━ TITLE ━━".into()))];
+        let name = vec![
+            token(ResolvedTokenKind::StateIcon),
+            token(ResolvedTokenKind::Workspace("dev-ops".into())),
+        ];
+        let detail = vec![token(ResolvedTokenKind::Custom("on duty".into()))];
+        assert_eq!(name_row(&[title.clone(), name.clone(), detail.clone()]), 1);
+        assert_eq!(name_row(&[name, detail.clone()]), 0);
+        assert_eq!(name_row(&[title, detail]), 0);
     }
 }
