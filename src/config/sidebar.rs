@@ -521,9 +521,7 @@ mod tests {
     #[test]
     fn parses_group_worktrees_switch() {
         let config: crate::config::Config =
-            toml::from_str("[ui.sidebar.spaces]
-group_worktrees = false
-").unwrap();
+            toml::from_str("[ui.sidebar.spaces]\ngroup_worktrees = false\n").unwrap();
         assert!(!config.ui.sidebar.spaces.group_worktrees);
         assert_eq!(
             config.ui.sidebar.spaces.rows,

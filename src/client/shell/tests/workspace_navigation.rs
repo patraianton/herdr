@@ -978,10 +978,8 @@ fn ungrouped_worktrees_stay_in_sidebar_order_without_a_group_toggle() {
     state.set_snapshot(Box::new(projected.clone()));
     let stamped = state.snapshot.as_deref().unwrap();
     assert!(!stamped.group_worktrees, "the client's own setting wins");
-    let entries = crate::client::shell::render::workspace_entries(
-        stamped,
-        &std::collections::HashSet::new(),
-    );
+    let entries =
+        crate::client::shell::render::workspace_entries(stamped, &std::collections::HashSet::new());
     assert_eq!(
         entries.iter().map(|entry| entry.index).collect::<Vec<_>>(),
         vec![0, 1, 2]
