@@ -786,7 +786,10 @@ pub(in crate::client::shell) fn render_workspace_rows(
 fn name_row(rows: &[Vec<crate::ui::ResolvedToken>]) -> usize {
     use crate::ui::ResolvedTokenKind::{StateIcon, Workspace};
     rows.iter()
-        .position(|row| row.iter().any(|token| matches!(token.kind, Workspace(_) | StateIcon)))
+        .position(|row| {
+            row.iter()
+                .any(|token| matches!(token.kind, Workspace(_) | StateIcon))
+        })
         .unwrap_or(0)
 }
 
