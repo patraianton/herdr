@@ -308,7 +308,7 @@ in
       name = "translate_c-0.0.0-Q_BUWhVNBwDOEcIqub4VFPJPB6D9dgwzUMHTX5KWr8Xr";
       path = fetchZigArtifact {
         name = "translate_c";
-        url = "https://codeberg.org/vancluever/translate-c/archive/4e879eb8aba615de112eabd1231ea6e01920cead.tar.gz";
+        url = "https://github.com/patraianton/herdr/releases/download/deps-mirror/translate-c-4e879eb8.tar.gz";
         hash = "sha256-/sT7W8Kp+O11xaFBgpb/kDiWzfQ0MuXk/d/TuGq1Am8=";
         unpack = true;
       };
