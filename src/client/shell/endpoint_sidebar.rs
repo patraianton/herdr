@@ -472,15 +472,13 @@ pub(super) fn render_expanded(
                     buffer,
                     nested,
                     status,
-                    config.status_indicators,
-                    &config.spaces.separator,
+                    config,
                     entry,
                     tokens,
                     endpoint_active && workspace.focused,
                     selected,
                     state.selected_workspace_id.is_some(),
                     false,
-                    palette,
                 );
                 if endpoint.status != ClientEndpointStatus::Online {
                     buffer.set_style(

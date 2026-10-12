@@ -325,15 +325,13 @@ pub(crate) fn render_sidebar(
             buffer,
             rect,
             status,
-            config.status_indicators,
-            &config.spaces.separator,
+            config,
             entry,
             rows,
             workspace.focused,
             selected,
             state.selected_workspace_id.is_some(),
             dragged,
-            palette,
         );
         let group_toggle = render_parent_group_toggle(
             buffer,
@@ -683,16 +681,15 @@ pub(in crate::client::shell) fn render_workspace_rows(
     buffer: &mut Buffer,
     area: Rect,
     status: crate::api::schema::AgentStatus,
-    indicators: crate::config::StatusIndicatorStyle,
-    separator: &str,
+    config: &ClientShellConfig,
     entry: &WorkspaceEntry,
     rows: Vec<Vec<crate::ui::ResolvedToken>>,
     focused: bool,
     selected: bool,
     navigating: bool,
     dragged: bool,
-    palette: &Palette,
 ) {
+    let palette = &config.palette;
     let main = name_row(&rows);
     for (row_index, row) in rows.iter().enumerate() {
         let y = area.y + row_index as u16;
@@ -747,7 +744,7 @@ pub(in crate::client::shell) fn render_workspace_rows(
         let spans = crate::ui::resolved_token_spans(
             row,
             (
-                status_icon(status, indicators),
+                status_icon(status, config.status_indicators),
                 Style::default().fg(status_color(status, palette)),
             ),
             Style::default().fg(status_color(status, palette)),
@@ -756,7 +753,7 @@ pub(in crate::client::shell) fn render_workspace_rows(
             Style::default().fg(palette.overlay1),
             palette,
             area.right().saturating_sub(2).saturating_sub(x) as usize,
-            Some(separator),
+            Some(config.spaces.separator.as_str()),
         );
         Paragraph::new(Line::from(spans)).render(
             Rect::new(x, y, area.right().saturating_sub(2).saturating_sub(x), 1),
