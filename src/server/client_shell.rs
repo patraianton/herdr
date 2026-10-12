@@ -250,6 +250,7 @@ pub(super) fn snapshot_with_completions(
         latest_release_notes_available: app.state.latest_release_notes_available,
         integration_updates_available: app.state.integration_updates_available(),
         worktree_directory: app.state.worktree_directory.to_string_lossy().into_owned(),
+        group_worktrees: true,
         release_notes,
         focused_workspace_id,
         focused_tab_id,

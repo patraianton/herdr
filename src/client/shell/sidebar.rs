@@ -325,14 +325,13 @@ pub(crate) fn render_sidebar(
             buffer,
             rect,
             status,
-            config.status_indicators,
+            config,
             entry,
             rows,
             workspace.focused,
             selected,
             state.selected_workspace_id.is_some(),
             dragged,
-            palette,
         );
         let group_toggle = render_parent_group_toggle(
             buffer,
@@ -459,6 +458,17 @@ pub(crate) fn workspace_entries(
     snapshot: &ClientShellSnapshot,
     collapsed_groups: &HashSet<String>,
 ) -> Vec<WorkspaceEntry> {
+    if !snapshot.group_worktrees {
+        let nested =
+            |index: usize| index > 0 && snapshot.workspaces.get(index).is_some_and(token_nested);
+        return (0..snapshot.workspaces.len())
+            .map(|index| WorkspaceEntry {
+                index,
+                indented: nested(index),
+                last_child: nested(index) && !nested(index + 1),
+            })
+            .collect();
+    }
     let mut members = HashMap::<&str, Vec<usize>>::new();
     for (index, workspace) in snapshot.workspaces.iter().enumerate() {
         if let Some(worktree) = &workspace.worktree {
@@ -544,7 +554,22 @@ pub(crate) fn workspace_entries(
     entries
 }
 
+/// Custom token that draws a Space under the Space above it when
+/// `group_worktrees = false`, the way a worktree group is drawn. Set by a
+/// plugin that keeps a project and its copies together itself.
+const NESTED_TOKEN: &str = "nested";
+
+pub(in crate::client::shell) fn token_nested(workspace: &ClientShellWorkspace) -> bool {
+    workspace
+        .tokens
+        .iter()
+        .any(|(name, value)| name == NESTED_TOKEN && !value.is_empty())
+}
+
 fn parent_group_key(snapshot: &ClientShellSnapshot, index: usize) -> Option<String> {
+    if !snapshot.group_worktrees {
+        return None;
+    }
     let workspace = snapshot.workspaces.get(index)?;
     let worktree = workspace.worktree.as_ref()?;
     if worktree.is_linked_worktree {
@@ -629,7 +654,7 @@ pub(in crate::client::shell) fn workspace_rows(
     indented: bool,
     config: &SpacesSidebarConfig,
 ) -> Vec<Vec<crate::ui::ResolvedToken>> {
-    let label = if indented && !workspace.custom_label {
+    let label = if indented && !workspace.custom_label && !token_nested(workspace) {
         workspace
             .branch
             .as_deref()
@@ -656,15 +681,16 @@ pub(in crate::client::shell) fn render_workspace_rows(
     buffer: &mut Buffer,
     area: Rect,
     status: crate::api::schema::AgentStatus,
-    indicators: crate::config::StatusIndicatorStyle,
+    config: &ClientShellConfig,
     entry: &WorkspaceEntry,
     rows: Vec<Vec<crate::ui::ResolvedToken>>,
     focused: bool,
     selected: bool,
     navigating: bool,
     dragged: bool,
-    palette: &Palette,
 ) {
+    let palette = &config.palette;
+    let main = name_row(&rows);
     for (row_index, row) in rows.iter().enumerate() {
         let y = area.y + row_index as u16;
         if y >= area.bottom() {
@@ -672,12 +698,14 @@ pub(in crate::client::shell) fn render_workspace_rows(
         }
         let mut x = area.x;
         if entry.indented {
-            let prefix = if row_index == 0 {
+            let prefix = if row_index == main {
                 if entry.last_child {
                     "   └─ "
                 } else {
                     "   ├─ "
                 }
+            } else if row_index < main {
+                "      "
             } else if entry.last_child {
                 "        "
             } else {
@@ -691,7 +719,7 @@ pub(in crate::client::shell) fn render_workspace_rows(
                 prefix,
                 Style::default().fg(palette.overlay0),
             );
-        } else if row_index == 0 {
+        } else if row_index <= main {
             x = x.saturating_add(1);
         } else {
             x = x.saturating_add(3);
@@ -716,7 +744,7 @@ pub(in crate::client::shell) fn render_workspace_rows(
         let spans = crate::ui::resolved_token_spans(
             row,
             (
-                status_icon(status, indicators),
+                status_icon(status, config.status_indicators),
                 Style::default().fg(status_color(status, palette)),
             ),
             Style::default().fg(status_color(status, palette)),
@@ -725,6 +753,7 @@ pub(in crate::client::shell) fn render_workspace_rows(
             Style::default().fg(palette.overlay1),
             palette,
             area.right().saturating_sub(2).saturating_sub(x) as usize,
+            Some(config.spaces.separator.as_str()),
         );
         Paragraph::new(Line::from(spans)).render(
             Rect::new(x, y, area.right().saturating_sub(2).saturating_sub(x), 1),
@@ -742,10 +771,49 @@ pub(in crate::client::shell) fn render_workspace_rows(
         None
     };
     if let Some(background) = background {
-        for y in area.y..area.bottom() {
+        for y in area.y.saturating_add(main as u16)..area.bottom() {
             for x in area.x..area.right() {
                 buffer[(x, y)].set_bg(background);
             }
         }
+    }
+}
+
+/// The row with the Space name (or its state icon). Rows above it, such as a
+/// title drawn from a custom token, start at the left edge like the name row
+/// and stay out of the entry's highlight; rows below it are indented details.
+fn name_row(rows: &[Vec<crate::ui::ResolvedToken>]) -> usize {
+    use crate::ui::ResolvedTokenKind::{StateIcon, Workspace};
+    rows.iter()
+        .position(|row| {
+            row.iter()
+                .any(|token| matches!(token.kind, Workspace(_) | StateIcon))
+        })
+        .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod name_row_tests {
+    use super::name_row;
+    use crate::ui::{ResolvedToken, ResolvedTokenKind};
+
+    fn token(kind: ResolvedTokenKind) -> ResolvedToken {
+        ResolvedToken {
+            kind,
+            style: Default::default(),
+        }
+    }
+
+    #[test]
+    fn a_title_row_above_the_name_does_not_push_the_name_in() {
+        let title = vec![token(ResolvedTokenKind::Custom("━━ TITLE ━━".into()))];
+        let name = vec![
+            token(ResolvedTokenKind::StateIcon),
+            token(ResolvedTokenKind::Workspace("dev-ops".into())),
+        ];
+        let detail = vec![token(ResolvedTokenKind::Custom("on duty".into()))];
+        assert_eq!(name_row(&[title.clone(), name.clone(), detail.clone()]), 1);
+        assert_eq!(name_row(&[name, detail.clone()]), 0);
+        assert_eq!(name_row(&[title, detail]), 0);
     }
 }

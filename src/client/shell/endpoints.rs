@@ -542,6 +542,7 @@ impl ClientShellState {
         mut snapshot: Box<ClientShellSnapshot>,
         acknowledge_surface: bool,
     ) {
+        snapshot.group_worktrees = self.config.spaces.group_worktrees;
         snapshot
             .commands
             .retain(|command| command.action != crate::protocol::ClientShellCommandAction::Unknown);

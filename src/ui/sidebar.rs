@@ -103,6 +103,10 @@ pub(crate) fn agent_panel_entries_from(
     entries
 }
 
+/// Custom tokens up to this width that are not dimmed count as marks on
+/// Space rows: they keep their full width before the Space name.
+const SHORT_TOKEN_WIDTH: usize = 10;
+
 pub(crate) fn resolved_token_spans(
     resolved: &[ResolvedToken],
     state_icon: (&str, Style),
@@ -112,7 +116,14 @@ pub(crate) fn resolved_token_spans(
     custom_style: Style,
     palette: &Palette,
     max_width: usize,
+    // Space rows pass their separator; their name keeps its width first.
+    space_separator: Option<&str>,
 ) -> Vec<Span<'static>> {
+    let workspace_first = space_separator.is_some();
+    let between = space_separator.unwrap_or(tokens::TOKEN_SEPARATOR);
+    let separator = |previous: &ResolvedToken, current: &ResolvedToken| {
+        tokens::separator(previous, current, between)
+    };
     let fixed_widths = resolved
         .iter()
         .map(|token| match &token.kind {
@@ -152,7 +163,7 @@ pub(crate) fn resolved_token_spans(
             .sum::<usize>();
         let separators = indices
             .windows(2)
-            .map(|pair| display_width(tokens::separator(&resolved[pair[0]], &resolved[pair[1]])))
+            .map(|pair| display_width(separator(&resolved[pair[0]], &resolved[pair[1]])))
             .sum::<usize>();
         content + separators
     };
@@ -180,7 +191,7 @@ pub(crate) fn resolved_token_spans(
         .collect::<Vec<_>>();
     let separator_width = visible_indices
         .windows(2)
-        .map(|pair| display_width(tokens::separator(&resolved[pair[0]], &resolved[pair[1]])))
+        .map(|pair| display_width(separator(&resolved[pair[0]], &resolved[pair[1]])))
         .sum::<usize>();
     let fixed_width = visible_indices
         .iter()
@@ -195,6 +206,29 @@ pub(crate) fn resolved_token_spans(
     let mut remaining = max_width
         .saturating_sub(separator_width + fixed_width)
         .saturating_sub(minimum);
+    // Space rows: marks (short custom tokens that are not dimmed: a star, a
+    // counter) keep their full width first, then the Space name, and the other
+    // flexible tokens share what is left.
+    if workspace_first {
+        let grows_in = |pass: usize, token: &ResolvedToken, width: usize| match token.kind {
+            ResolvedTokenKind::Custom(_) => {
+                pass == 0 && width <= SHORT_TOKEN_WIDTH && token.style.dim != Some(true)
+            }
+            ResolvedTokenKind::Workspace(_) => pass == 1,
+            _ => false,
+        };
+        for pass in 0..2 {
+            for (index, token) in resolved.iter().enumerate() {
+                if budgets[index] > 0 && grows_in(pass, token, flexible_widths[index]) {
+                    let grow = flexible_widths[index]
+                        .saturating_sub(budgets[index])
+                        .min(remaining);
+                    budgets[index] += grow;
+                    remaining -= grow;
+                }
+            }
+        }
+    }
     while remaining > 0 {
         let mut grew = false;
         for (budget, width) in budgets.iter_mut().zip(&flexible_widths) {
@@ -218,7 +252,7 @@ pub(crate) fn resolved_token_spans(
         if position > 0 {
             let previous = &resolved[visible_indices[position - 1]];
             spans.push(Span::styled(
-                tokens::separator(previous, token),
+                separator(previous, token).to_string(),
                 Style::default().fg(palette.overlay0),
             ));
         }

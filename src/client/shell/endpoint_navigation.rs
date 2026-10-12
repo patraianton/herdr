@@ -12,22 +12,29 @@ impl ClientShellState {
     }
 
     pub(super) fn endpoint_workspace_is_draggable(&self, press: &ClientWorkspacePress) -> bool {
-        press.endpoint_id == self.active_endpoint_id
-            && self
-                .snapshot
-                .as_deref()
-                .and_then(|snapshot| {
-                    snapshot
-                        .workspaces
-                        .iter()
-                        .find(|workspace| workspace.workspace_id == press.workspace_id)
-                })
-                .is_some_and(|workspace| {
-                    !workspace
-                        .worktree
-                        .as_ref()
-                        .is_some_and(|worktree| worktree.is_linked_worktree)
-                })
+        if press.endpoint_id != self.active_endpoint_id {
+            return false;
+        }
+        let Some(snapshot) = self.snapshot.as_deref() else {
+            return false;
+        };
+        let Some(position) = snapshot
+            .workspaces
+            .iter()
+            .position(|workspace| workspace.workspace_id == press.workspace_id)
+        else {
+            return false;
+        };
+        let workspace = &snapshot.workspaces[position];
+        if !snapshot.group_worktrees {
+            // Copies stand on lines of their own and move alone; one drawn
+            // under the Space above moves with that Space.
+            return position == 0 || !render::token_nested(workspace);
+        }
+        !workspace
+            .worktree
+            .as_ref()
+            .is_some_and(|worktree| worktree.is_linked_worktree)
     }
 
     pub(super) fn finish_endpoint_workspace_press(

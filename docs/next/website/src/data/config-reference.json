@@ -1073,6 +1073,12 @@
           "description": "Complete Agent-row overrides keyed by strict canonical agent id. Agents without an override use ui.sidebar.agents.rows."
         },
         {
+          "key": "ui.sidebar.spaces.group_worktrees",
+          "type": "boolean",
+          "default": "true",
+          "description": "Draw linked worktree Spaces nested under their repository's Space. Set to false to give every Space its own top-level entry in the sidebar order; a Space whose custom token nested is set is then drawn under the Space above it."
+        },
+        {
           "key": "ui.sidebar.spaces.row_gap",
           "type": "integer",
           "default": "0",
@@ -1083,6 +1089,12 @@
           "type": "list of token rows",
           "default": "[[\"state_icon\", \"workspace\"], [\"branch\", \"git_status\"]]",
           "description": "Expanded Space sidebar layout. Entries may be token strings or inline { token, fg, bold, dim, rules } style tables. Text-valued built-ins and $name metadata tokens accept up to 16 ordered rules using equals, contains, starts_with, gt, or lt; the first match overrides specified styles. Text conditions optionally accept ignore_case for ASCII matching; numeric conditions require full finite numbers. state_icon and git_status accept fixed styles only. At most 16 rows and 16 tokens per row."
+        },
+        {
+          "key": "ui.sidebar.spaces.separator",
+          "type": "string",
+          "default": "\" · \"",
+          "description": "Drawn between the tokens of a Space row, at most 3 characters. Set to \" \" for a compact sidebar; a token after state_icon or before git_status keeps a single space."
         },
         {
           "key": "ui.accent",

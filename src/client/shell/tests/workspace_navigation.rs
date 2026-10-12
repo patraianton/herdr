@@ -968,3 +968,29 @@ fn navigation_highlight_ends_for_noop_focus_and_focused_creation() {
         }
     }
 }
+
+#[test]
+fn ungrouped_worktrees_stay_in_sidebar_order_without_a_group_toggle() {
+    let (mut state, _) = navigation_state(grouped_workspaces());
+    assert!(state.snapshot.as_deref().unwrap().group_worktrees);
+    state.config.spaces.group_worktrees = false;
+    let projected = grouped_workspaces();
+    state.set_snapshot(Box::new(projected.clone()));
+    let stamped = state.snapshot.as_deref().unwrap();
+    assert!(!stamped.group_worktrees, "the client's own setting wins");
+    let entries =
+        crate::client::shell::render::workspace_entries(stamped, &std::collections::HashSet::new());
+    assert_eq!(
+        entries.iter().map(|entry| entry.index).collect::<Vec<_>>(),
+        vec![0, 1, 2]
+    );
+    assert!(entries.iter().all(|entry| !entry.indented));
+
+    state.set_endpoint_catalog(&[]);
+    state.compose(100, 28).unwrap();
+    enter_navigation(&mut state);
+    for id in ["ws_2", "ws_3"] {
+        preview_key(&mut state, b"\x1b[B");
+        assert_selected(&state, &ClientEndpointId::Local, id);
+    }
+}

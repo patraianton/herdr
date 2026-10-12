@@ -1339,6 +1339,7 @@ impl ClientShellState {
         self.config_diagnostic = super::config::merged_config_diagnostic(
             self.local_config_diagnostic.as_deref(),
             snapshot.config_diagnostic.as_deref(),
+            self.active_endpoint_id == ClientEndpointId::Local,
         );
         let boot_changed = endpoint_boot_changed
             || self
