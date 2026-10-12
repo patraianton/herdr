@@ -328,6 +328,32 @@ rows = [[{ token = "workspace", rules = [{ equals = "long-workspace-name", fg = 
     }
 
     #[test]
+    fn short_custom_tokens_keep_their_width_before_the_space_name() {
+        use ratatui::style::Style;
+        let row = vec![
+            ResolvedToken::unstyled(ResolvedTokenKind::Custom("★1".into())),
+            ResolvedToken::unstyled(ResolvedTokenKind::Workspace("tl-bitrix-integration".into())),
+            ResolvedToken::unstyled(ResolvedTokenKind::Custom("3d/20m".into())),
+        ];
+        let spans = super::super::resolved_token_spans(
+            &row,
+            ("*", Style::default()),
+            Style::default(),
+            Style::default(),
+            Style::default(),
+            Style::default(),
+            &super::super::Palette::catppuccin(),
+            26,
+            true,
+        );
+        let text = spans
+            .iter()
+            .map(|span| span.content.to_string())
+            .collect::<String>();
+        assert_eq!(text, "★1 · tl-bitrix-i… · 3d/20m");
+    }
+
+    #[test]
     fn custom_numeric_rules_resolve_in_agent_overrides_and_space_rows() {
         let config: crate::config::SidebarConfig = toml::from_str(
             r#"

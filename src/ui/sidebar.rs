@@ -103,6 +103,10 @@ pub(crate) fn agent_panel_entries_from(
     entries
 }
 
+/// Custom tokens up to this width count as short on Space rows: they keep
+/// their full width before the Space name.
+const SHORT_TOKEN_WIDTH: usize = 10;
+
 pub(crate) fn resolved_token_spans(
     resolved: &[ResolvedToken],
     state_icon: (&str, Style),
@@ -196,16 +200,24 @@ pub(crate) fn resolved_token_spans(
     let mut remaining = max_width
         .saturating_sub(separator_width + fixed_width)
         .saturating_sub(minimum);
-    // Space rows: the Space name keeps its full width before the other
-    // flexible tokens share what is left.
+    // Space rows: short custom tokens (a mark, a counter) keep their full
+    // width first, then the Space name, and the other flexible tokens share
+    // what is left.
     if workspace_first {
-        for (index, token) in resolved.iter().enumerate() {
-            if budgets[index] > 0 && matches!(token.kind, ResolvedTokenKind::Workspace(_)) {
-                let grow = flexible_widths[index]
-                    .saturating_sub(budgets[index])
-                    .min(remaining);
-                budgets[index] += grow;
-                remaining -= grow;
+        let grows_in = |pass: usize, token: &ResolvedToken, width: usize| match token.kind {
+            ResolvedTokenKind::Custom(_) => pass == 0 && width <= SHORT_TOKEN_WIDTH,
+            ResolvedTokenKind::Workspace(_) => pass == 1,
+            _ => false,
+        };
+        for pass in 0..2 {
+            for (index, token) in resolved.iter().enumerate() {
+                if budgets[index] > 0 && grows_in(pass, token, flexible_widths[index]) {
+                    let grow = flexible_widths[index]
+                        .saturating_sub(budgets[index])
+                        .min(remaining);
+                    budgets[index] += grow;
+                    remaining -= grow;
+                }
             }
         }
     }
