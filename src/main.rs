@@ -363,6 +363,8 @@ const DEFAULT_CONFIG: &str = r##"# herdr configuration
 # Client-owned: it applies to every machine this client shows.
 # With false, a space whose custom token "nested" is set is drawn under the space above it.
 # group_worktrees = true
+# Drawn between the tokens of a space row, at most 3 characters; " " gives a compact sidebar.
+# separator = " · "
 
 # Background notification popup delivery
 [ui.toast]

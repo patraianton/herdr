@@ -177,13 +177,20 @@ pub(crate) fn space_rows(
         .collect()
 }
 
-pub(crate) fn separator(previous: &ResolvedToken, current: &ResolvedToken) -> &'static str {
+/// Between the tokens of an Agent row, and of a Space row unless configured.
+pub(crate) const TOKEN_SEPARATOR: &str = " · ";
+
+pub(crate) fn separator<'a>(
+    previous: &ResolvedToken,
+    current: &ResolvedToken,
+    between: &'a str,
+) -> &'a str {
     if matches!(previous.kind, ResolvedTokenKind::StateIcon)
         || matches!(current.kind, ResolvedTokenKind::GitStatus { .. })
     {
         " "
     } else {
-        " · "
+        between
     }
 }
 
@@ -283,7 +290,7 @@ rows = [[{ token = "workspace", rules = [{ equals = "long-workspace-name", fg = 
                 theme,
                 &super::super::Palette::catppuccin(),
                 width,
-                false,
+                None,
             );
             assert_eq!(spans.len(), 1);
             assert!(super::super::display_width(&spans[0].content) <= width);
@@ -306,7 +313,7 @@ rows = [[{ token = "workspace", rules = [{ equals = "long-workspace-name", fg = 
             ResolvedToken::unstyled(ResolvedTokenKind::Workspace("awsome-motive".into())),
             ResolvedToken::unstyled(ResolvedTokenKind::Custom("⎇ job-hunting".into())),
         ];
-        let text = |workspace_first: bool| {
+        let text = |space_separator: Option<&str>| {
             super::super::resolved_token_spans(
                 &row,
                 ("*", Style::default()),
@@ -316,41 +323,43 @@ rows = [[{ token = "workspace", rules = [{ equals = "long-workspace-name", fg = 
                 Style::default(),
                 &super::super::Palette::catppuccin(),
                 20,
-                workspace_first,
+                space_separator,
             )
             .iter()
             .map(|span| span.content.to_string())
             .collect::<String>()
         };
-        assert_eq!(text(true), "awsome-motive · ⎇ j…");
-        assert!(!text(false).starts_with("awsome-motive"));
-        assert!(super::super::display_width(&text(true)) <= 20);
+        assert_eq!(text(Some(" · ")), "awsome-motive · ⎇ j…");
+        assert!(!text(None).starts_with("awsome-motive"));
+        assert!(super::super::display_width(&text(Some(" · "))) <= 20);
     }
 
     #[test]
-    fn short_custom_tokens_keep_their_width_before_the_space_name() {
+    fn short_custom_tokens_keep_their_width_before_the_space_name_with_any_separator() {
         use ratatui::style::Style;
         let row = vec![
             ResolvedToken::unstyled(ResolvedTokenKind::Custom("★1".into())),
             ResolvedToken::unstyled(ResolvedTokenKind::Workspace("tl-bitrix-integration".into())),
             ResolvedToken::unstyled(ResolvedTokenKind::Custom("3d/20m".into())),
         ];
-        let spans = super::super::resolved_token_spans(
-            &row,
-            ("*", Style::default()),
-            Style::default(),
-            Style::default(),
-            Style::default(),
-            Style::default(),
-            &super::super::Palette::catppuccin(),
-            26,
-            true,
-        );
-        let text = spans
+        let text = |separator: &str| {
+            super::super::resolved_token_spans(
+                &row,
+                ("*", Style::default()),
+                Style::default(),
+                Style::default(),
+                Style::default(),
+                Style::default(),
+                &super::super::Palette::catppuccin(),
+                26,
+                Some(separator),
+            )
             .iter()
             .map(|span| span.content.to_string())
-            .collect::<String>();
-        assert_eq!(text, "★1 · tl-bitrix-i… · 3d/20m");
+            .collect::<String>()
+        };
+        assert_eq!(text(" · "), "★1 · tl-bitrix-i… · 3d/20m");
+        assert_eq!(text(" "), "★1 tl-bitrix-integ… 3d/20m");
     }
 
     #[test]

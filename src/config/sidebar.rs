@@ -11,6 +11,8 @@ use crate::detect::Agent;
 const MAX_SIDEBAR_ROWS: usize = 16;
 const MAX_SIDEBAR_TOKENS_PER_ROW: usize = 16;
 const DEFAULT_SIDEBAR_ROW_GAP: u16 = 0;
+const DEFAULT_SPACE_SEPARATOR: &str = " · ";
+const MAX_SPACE_SEPARATOR_CHARS: usize = 3;
 
 fn deserialize_sidebar_rows<'de, D, T>(deserializer: D) -> Result<Vec<Vec<T>>, D::Error>
 where
@@ -20,6 +22,21 @@ where
     let rows = Vec::<Vec<T>>::deserialize(deserializer)?;
     validate_sidebar_rows(&rows).map_err(serde::de::Error::custom)?;
     Ok(rows)
+}
+
+fn deserialize_space_separator<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let separator = String::deserialize(deserializer)?;
+    if separator.chars().count() > MAX_SPACE_SEPARATOR_CHARS
+        || separator.chars().any(char::is_control)
+    {
+        return Err(serde::de::Error::custom(format!(
+            "sidebar separator must be at most {MAX_SPACE_SEPARATOR_CHARS} characters without control characters"
+        )));
+    }
+    Ok(separator)
 }
 
 fn validate_sidebar_rows<T>(rows: &[Vec<T>]) -> Result<(), String> {
@@ -464,6 +481,10 @@ pub struct SpacesSidebarConfig {
     /// Draw linked worktree Spaces nested under their repository's Space.
     /// `false` gives every Space its own top-level entry in the sidebar order.
     pub group_worktrees: bool,
+    /// Drawn between the tokens of a Space row; a token after `state_icon`
+    /// or before `git_status` keeps a single space.
+    #[serde(deserialize_with = "deserialize_space_separator")]
+    pub separator: String,
 }
 
 impl Default for SpacesSidebarConfig {
@@ -475,6 +496,7 @@ impl Default for SpacesSidebarConfig {
             ],
             row_gap: DEFAULT_SIDEBAR_ROW_GAP,
             group_worktrees: true,
+            separator: DEFAULT_SPACE_SEPARATOR.into(),
         }
     }
 }
@@ -516,6 +538,17 @@ mod tests {
         );
         assert_eq!(config.spaces.row_gap, 0);
         assert!(config.spaces.group_worktrees);
+    }
+
+    #[test]
+    fn parses_space_separator_and_refuses_a_long_one() {
+        let config: crate::config::Config =
+            toml::from_str("[ui.sidebar.spaces]\nseparator = \" \"\n").unwrap();
+        assert_eq!(config.ui.sidebar.spaces.separator, " ");
+        let default: crate::config::Config = toml::from_str("").unwrap();
+        assert_eq!(default.ui.sidebar.spaces.separator, " · ");
+        let long = "[ui.sidebar.spaces]\nseparator = \" -- \"\n";
+        assert!(toml::from_str::<crate::config::Config>(long).is_err());
     }
 
     #[test]
