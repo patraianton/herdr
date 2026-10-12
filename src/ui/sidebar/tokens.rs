@@ -335,14 +335,21 @@ rows = [[{ token = "workspace", rules = [{ equals = "long-workspace-name", fg = 
     }
 
     #[test]
-    fn short_custom_tokens_keep_their_width_before_the_space_name_with_any_separator() {
+    fn marks_keep_their_width_before_the_space_name_and_dimmed_tokens_give_way() {
         use ratatui::style::Style;
         let row = vec![
             ResolvedToken::unstyled(ResolvedTokenKind::Custom("★1".into())),
             ResolvedToken::unstyled(ResolvedTokenKind::Workspace("tl-bitrix-integration".into())),
             ResolvedToken::unstyled(ResolvedTokenKind::Custom("3d/20m".into())),
+            ResolvedToken::new(
+                ResolvedTokenKind::Custom("⎇ crm".into()),
+                SidebarTokenStyle {
+                    dim: Some(true),
+                    ..Default::default()
+                },
+            ),
         ];
-        let text = |separator: &str| {
+        let text = |separator: &str, width: usize| {
             super::super::resolved_token_spans(
                 &row,
                 ("*", Style::default()),
@@ -351,15 +358,16 @@ rows = [[{ token = "workspace", rules = [{ equals = "long-workspace-name", fg = 
                 Style::default(),
                 Style::default(),
                 &super::super::Palette::catppuccin(),
-                26,
+                width,
                 Some(separator),
             )
             .iter()
             .map(|span| span.content.to_string())
             .collect::<String>()
         };
-        assert_eq!(text(" · "), "★1 · tl-bitrix-i… · 3d/20m");
-        assert_eq!(text(" "), "★1 tl-bitrix-integ… 3d/20m");
+        assert_eq!(text(" · ", 30), "★1 · tl-bitrix-i… · 3d/20m · …");
+        assert_eq!(text(" ", 28), "★1 tl-bitrix-integ… 3d/20m …");
+        assert_eq!(text(" ", 37), "★1 tl-bitrix-integration 3d/20m ⎇ crm");
     }
 
     #[test]

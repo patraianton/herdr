@@ -438,7 +438,7 @@ Rules work with text-valued built-ins and custom `$name` tokens in Agent rows, `
 
 `group_worktrees` under `[ui.sidebar.spaces]` defaults to `true`, which draws linked worktree Spaces nested under their repository's Space and keeps the group together. Set it to `false` to give every Space its own top-level entry in the sidebar order, so a worktree can be reordered apart from its repository. Worktree provenance is unchanged: `worktree` commands and the `branch` token work as before. With `false`, a Space whose custom token `nested` is set (for example by a plugin that keeps a repository and its worktrees together) is drawn under the Space above it, and moves with it when that Space is dragged.
 
-`separator` under `[ui.sidebar.spaces]` is drawn between the tokens of a Space row and defaults to `" · "`. Set it to `" "` for a compact sidebar; a token after `state_icon` or before `git_status` keeps a single space. It takes at most 3 characters. On a Space row that does not fit, custom tokens up to 10 columns wide keep their full width first, then the Space name, and longer tokens share what is left.
+`separator` under `[ui.sidebar.spaces]` is drawn between the tokens of a Space row and defaults to `" · "`. Set it to `" "` for a compact sidebar; a token after `state_icon` or before `git_status` keeps a single space. It takes at most 3 characters. On a Space row that does not fit, custom tokens up to 10 columns wide that are not dimmed (marks such as a star or a counter) keep their full width first, then the Space name, and the other tokens share what is left.
 
 Override the complete Agent layout for a known agent under `rows_by_agent`:
 
