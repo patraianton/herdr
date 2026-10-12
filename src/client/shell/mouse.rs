@@ -573,6 +573,33 @@ impl ClientShellState {
             .workspaces
             .iter()
             .find(|workspace| workspace.workspace_id == source_workspace_id)?;
+        if !snapshot.group_worktrees {
+            // Every Space moves on its own, together with the Spaces drawn
+            // under it.
+            let entries = render::workspace_entries(snapshot, &HashSet::new());
+            let id = |entry: &WorkspaceEntry| snapshot.workspaces[entry.index].workspace_id.clone();
+            let position = entries
+                .iter()
+                .position(|entry| id(entry) == source_workspace_id)?;
+            if entries[position].indented {
+                return None;
+            }
+            let mut end = position + 1;
+            while entries.get(end).is_some_and(|entry| entry.indented) {
+                end += 1;
+            }
+            let after = entries.get(end).map(id);
+            let target = before_workspace_id.map(str::to_owned);
+            if target == after || target.as_deref() == Some(source_workspace_id) {
+                return None;
+            }
+            return Some(crate::api::schema::Method::WorkspaceMoveBlock(
+                crate::api::schema::WorkspaceMoveBlockParams {
+                    workspace_ids: entries[position..end].iter().map(id).collect(),
+                    before_workspace_id: target,
+                },
+            ));
+        }
         if source
             .worktree
             .as_ref()

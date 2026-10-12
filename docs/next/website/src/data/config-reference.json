@@ -1076,7 +1076,7 @@
           "key": "ui.sidebar.spaces.group_worktrees",
           "type": "boolean",
           "default": "true",
-          "description": "Draw linked worktree Spaces nested under their repository's Space. Set to false to give every Space its own top-level entry in the sidebar order."
+          "description": "Draw linked worktree Spaces nested under their repository's Space. Set to false to give every Space its own top-level entry in the sidebar order; a Space whose custom token nested is set is then drawn under the Space above it."
         },
         {
           "key": "ui.sidebar.spaces.row_gap",

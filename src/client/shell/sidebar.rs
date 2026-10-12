@@ -460,11 +460,13 @@ pub(crate) fn workspace_entries(
     collapsed_groups: &HashSet<String>,
 ) -> Vec<WorkspaceEntry> {
     if !snapshot.group_worktrees {
+        let nested =
+            |index: usize| index > 0 && snapshot.workspaces.get(index).is_some_and(token_nested);
         return (0..snapshot.workspaces.len())
             .map(|index| WorkspaceEntry {
                 index,
-                indented: false,
-                last_child: false,
+                indented: nested(index),
+                last_child: nested(index) && !nested(index + 1),
             })
             .collect();
     }
@@ -551,6 +553,18 @@ pub(crate) fn workspace_entries(
         }
     }
     entries
+}
+
+/// Custom token that draws a Space under the Space above it when
+/// `group_worktrees = false`, the way a worktree group is drawn. Set by a
+/// plugin that keeps a project and its copies together itself.
+const NESTED_TOKEN: &str = "nested";
+
+pub(in crate::client::shell) fn token_nested(workspace: &ClientShellWorkspace) -> bool {
+    workspace
+        .tokens
+        .iter()
+        .any(|(name, value)| name == NESTED_TOKEN && !value.is_empty())
 }
 
 fn parent_group_key(snapshot: &ClientShellSnapshot, index: usize) -> Option<String> {
@@ -641,7 +655,7 @@ pub(in crate::client::shell) fn workspace_rows(
     indented: bool,
     config: &SpacesSidebarConfig,
 ) -> Vec<Vec<crate::ui::ResolvedToken>> {
-    let label = if indented && !workspace.custom_label {
+    let label = if indented && !workspace.custom_label && !token_nested(workspace) {
         workspace
             .branch
             .as_deref()

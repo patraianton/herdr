@@ -340,6 +340,118 @@ fn workspace_drag_moves_parent_worktree_as_one_block_and_rejects_child() {
 }
 
 #[test]
+fn ungrouped_spaces_nest_by_token_and_move_with_the_space_above() {
+    let mut projected = snapshot();
+    projected.workspaces[0].worktree = Some(ClientShellWorktree {
+        key: "repo".into(),
+        label: "repo".into(),
+        is_linked_worktree: false,
+    });
+    let space = |id: &str, number: usize, linked: bool, nested: bool| {
+        let mut workspace = projected.workspaces[0].clone();
+        workspace.workspace_id = id.into();
+        workspace.number = number;
+        workspace.label = id.into();
+        workspace.focused = false;
+        workspace.worktree = Some(ClientShellWorktree {
+            key: "repo".into(),
+            label: "repo".into(),
+            is_linked_worktree: linked,
+        });
+        if nested {
+            workspace.tokens = vec![("nested".into(), "1".into())];
+        }
+        workspace
+    };
+    let under = space("ws_under", 2, true, true);
+    let apart = space("ws_apart", 3, true, false);
+    let mut other = space("ws_other", 4, false, false);
+    other.worktree = None;
+    projected.workspaces.extend([under, apart, other]);
+
+    let mut config = Config::default();
+    config.ui.sidebar.spaces.group_worktrees = false;
+    let mut state = ClientShellState::new(ClientShellConfig::from_config(&config));
+    state.set_snapshot(Box::new(projected));
+    state.set_pane_surface(surface());
+    state.compose(106, 24).expect("nested spaces");
+    let indented = state
+        .hits
+        .workspaces
+        .iter()
+        .map(|hit| (hit.workspace_id.as_str(), hit.indented))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        indented,
+        [
+            ("ws_1", false),
+            ("ws_under", true),
+            ("ws_apart", false),
+            ("ws_other", false)
+        ]
+    );
+    let rect = |index: usize| state.hits.workspaces[index].rect;
+    let (top, under, apart, other) = (rect(0), rect(1), rect(2), rect(3));
+
+    let drag = |state: &mut ClientShellState, from: Rect, to: (u16, u16)| {
+        state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: from.x + 2,
+            row: from.y,
+            modifiers: KeyModifiers::empty(),
+        })]);
+        state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
+            kind: MouseEventKind::Drag(MouseButton::Left),
+            column: to.0,
+            row: to.1,
+            modifiers: KeyModifiers::empty(),
+        })]);
+        state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
+            kind: MouseEventKind::Up(MouseButton::Left),
+            column: to.0,
+            row: to.1,
+            modifiers: KeyModifiers::empty(),
+        })])
+    };
+    let moved = |outcome: &ClientShellInput, ids: &[&str], before: Option<&str>| {
+        matches!(
+            &outcome.actions[..],
+            [ClientShellAction::Endpoint { request, .. }]
+                if matches!(
+                    &request.method,
+                    crate::api::schema::Method::WorkspaceMoveBlock(params)
+                        if params.workspace_ids == ids
+                            && params.before_workspace_id.as_deref() == before
+                )
+        )
+    };
+
+    let outcome = drag(&mut state, top, (other.x + 2, other.bottom()));
+    assert!(moved(&outcome, &["ws_1", "ws_under"], None));
+
+    state.compose(106, 24).expect("linked copy");
+    let outcome = drag(&mut state, apart, (top.x + 2, top.y.saturating_sub(1)));
+    assert!(moved(&outcome, &["ws_apart"], Some("ws_1")));
+
+    state.compose(106, 24).expect("nested copy");
+    state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column: under.x + 2,
+        row: under.y,
+        modifiers: KeyModifiers::empty(),
+    })]);
+    let dragging_nested =
+        state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
+            kind: MouseEventKind::Drag(MouseButton::Left),
+            column: other.x + 2,
+            row: other.bottom(),
+            modifiers: KeyModifiers::empty(),
+        })]);
+    assert!(dragging_nested.actions.is_empty());
+    assert!(state.chrome_drag.is_none());
+}
+
+#[test]
 fn pane_cycle_last_and_agent_actions_resolve_to_stable_pane_ids() {
     let mut initial = snapshot();
     let mut second = initial.panes[0].clone();
